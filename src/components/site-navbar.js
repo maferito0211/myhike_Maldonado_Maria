@@ -29,6 +29,10 @@ class SiteNavbar extends HTMLElement {
                             <li class="nav-item">
                                 <a class="nav-link" href="/">Home</a>
                             </li>
+                            <!-- NEW: Saved Hikes link -->
+            <li class="nav-item">
+              <a class="nav-link" href="/saved.html">Saved</a>
+            </li>
                         </ul>
                         <div class="d-flex align-items-center gap-2 ms-lg-2" id="rightControls">
                             <form class="d-flex align-items-center gap-2 my-2 my-lg-0" id="navSearch" role="search">

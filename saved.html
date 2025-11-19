@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>My BCIT Project</title>
+    <meta name="comp1800 template" content="My 1800 App" />
+
+    <!-- Required meta tags -->
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- Web Components for shared navbar and footer layout -->
+    <script type="module" src="/src/components/site-navbar.js"></script>
+    <script type="module" src="/src/components/site-footer.js"></script>
+  </head>
+
+  <body>
+    <!------------------------------>
+    <!-- Your HTML Layout go here -->
+    <!------------------------------>
+
+    <!-- our own navbar goes here -->
+    <site-navbar></site-navbar>
+
+    <!-- Main content goes here -->
+    <main class="container my-4">
+      <h1>Saved Hikes for <span id="name-goes-here"></span></h1>
+
+      <div class="container">
+        <div id="hikeCardGroup" class="row row-cols-auto"></div>
+      </div>
+
+      <template id="savedCardTemplate">
+        <div class="card py-2 m-2 bg-light" style="width: 16rem">
+          <img class="card-image card-img-top" src="..." alt="Hike image" />
+          <div class="card-body">
+            <h5 class="card-title">Card title</h5>
+            <p class="card-text"></p>
+            <p>Length: <span class="card-length"></span> km</p>
+            <a class="btn btn-primary read-more" href="#">Read More</a>
+          </div>
+        </div>
+      </template>
+    </main>
+
+    <!-- our own footer goes here -->
+
+    <!---------------------------------------------->
+    <!-- Your own JavaScript scripts go here      -->
+    <!---------------------------------------------->
+
+    <script type="module" src="/src/app.js"></script>
+    <script type="module" src="/src/saved.js"></script>
+  </body>
+</html>

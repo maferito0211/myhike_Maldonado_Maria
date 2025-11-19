@@ -1,43 +1,59 @@
+// -----------------------------
+// IMPORTS CORREGIDOS
+// -----------------------------
 import { onAuthReady } from "./authentication.js";
 import { db } from "./firebaseConfig.js";
-import { doc, onSnapshot, getDoc } from "firebase/firestore";
 import {
+  doc,
+  onSnapshot,
+  getDoc,
   collection,
   getDocs,
   addDoc,
   serverTimestamp,
+  updateDoc,
+  arrayUnion,
+  arrayRemove,
 } from "firebase/firestore";
 
+// -----------------------------
+// SHOW DASHBOARD
+// -----------------------------
 function showDashboard() {
-  const nameElement = document.getElementById("name-goes-here"); // the <h1> element to display "Hello, {name}"
+  const nameElement = document.getElementById("name-goes-here");
 
   onAuthReady(async (user) => {
     if (!user) {
-      // If no user is signed in → redirect back to login page.
       location.href = "index.html";
       return;
     }
 
-    const userDoc = await getDoc(doc(db, "users", user.uid));
-    const name = userDoc.exists()
-      ? userDoc.data().name
-      : user.displayName || user.email;
+    const userRef = doc(db, "users", user.uid);
+    const userDoc = await getDoc(userRef);
 
-    // Update the welcome message with their name/email.
+    const userData = userDoc.exists() ? userDoc.data() : {};
+    const name = userData.name || user.displayName || user.email;
+
     if (nameElement) {
       nameElement.textContent = `${name}!`;
     }
+
+    const bookmarks = userData.bookmarks || [];
+
+    // FIX: Pass user.uid, not doc
+    await displayCardsDynamically(user.uid, bookmarks);
   });
 }
 
-// Function to read the quote of the day from Firestore
+// -----------------------------
+// QUOTE OF THE DAY
+// -----------------------------
 function readQuote(day) {
-  const quoteDocRef = doc(db, "quotes", day); // Get a reference to the document
+  const quoteDocRef = doc(db, "quotes", day);
 
   onSnapshot(
     quoteDocRef,
     (docSnap) => {
-      // Listen for real-time updates
       if (docSnap.exists()) {
         document.getElementById("quote-goes-here").innerHTML =
           docSnap.data().quote;
@@ -51,9 +67,12 @@ function readQuote(day) {
   );
 }
 
-// Helper function to add the sample hike documents.
+// -----------------------------
+// SEED HIKES DATA (only if empty)
+// -----------------------------
 function addHikeData() {
   const hikesRef = collection(db, "hikes");
+
   console.log("Adding sample hike data...");
   addDoc(hikesRef, {
     code: "BBY01",
@@ -63,10 +82,11 @@ function addHikeData() {
     details: "A lovely place for a lunch walk.",
     length: 10,
     hike_time: 60,
-    lat: 49.2467097082573,
-    lng: -122.9187029619698,
+    lat: 49.2467,
+    lng: -122.9187,
     last_updated: serverTimestamp(),
   });
+
   addDoc(hikesRef, {
     code: "AM01",
     name: "Buntzen Lake Trail",
@@ -75,10 +95,11 @@ function addHikeData() {
     details: "Close to town, and relaxing.",
     length: 10.5,
     hike_time: 80,
-    lat: 49.3399431028579,
-    lng: -122.85908496766939,
+    lat: 49.3399,
+    lng: -122.859,
     last_updated: serverTimestamp(),
   });
+
   addDoc(hikesRef, {
     code: "NV01",
     name: "Mount Seymour Trail",
@@ -87,8 +108,8 @@ function addHikeData() {
     details: "Amazing ski slope views.",
     length: 8.2,
     hike_time: 120,
-    lat: 49.38847101455571,
-    lng: -122.94092543551031,
+    lat: 49.3884,
+    lng: -122.9409,
     last_updated: serverTimestamp(),
   });
 }
@@ -97,40 +118,52 @@ async function seedHikes() {
   const hikesRef = collection(db, "hikes");
   const querySnapshot = await getDocs(hikesRef);
 
-  // Check if the collection is empty
   if (querySnapshot.empty) {
-    console.log("Hikes collection is empty. Seeding data...");
+    console.log("Hikes collection is empty. Seeding...");
     addHikeData();
   } else {
-    console.log("Hikes collection already contains data. Skipping seed.");
+    console.log("Hikes already exist. Skipping.");
   }
 }
 
-async function displayCardsDynamically() {
+// -----------------------------
+// DISPLAY CARDS DYNAMICALLY
+// -----------------------------
+async function displayCardsDynamically(userId, bookmarks) {
   let cardTemplate = document.getElementById("hikeCardTemplate");
-  const hikesCollectionRef = collection(db, "hikes");
+  const hikesRef = collection(db, "hikes");
 
   try {
-    const querySnapshot = await getDocs(hikesCollectionRef);
-    querySnapshot.forEach((doc) => {
-      // Clone the template
-      let newcard = cardTemplate.content.cloneNode(true);
-      const hike = doc.data(); // Get hike data once
+    const querySnapshot = await getDocs(hikesRef);
 
-      // Populate the card with hike data
+    querySnapshot.forEach((docSnap) => {
+      const hike = docSnap.data();
+      const hikeDocID = docSnap.id;
+
+      let newcard = cardTemplate.content.cloneNode(true);
+
       newcard.querySelector(".card-title").textContent = hike.name;
       newcard.querySelector(".card-text").textContent =
         hike.details || `Located in ${hike.city}.`;
       newcard.querySelector(".card-length").textContent = hike.length;
 
-      // 👇 ADD THIS LINE TO SET THE IMAGE SOURCE
+      // Image source
       newcard.querySelector(".card-image").src = `./images/${hike.code}.jpg`;
 
+      // FIX: docSnap.id (NOT doc.id)
       newcard.querySelector(
         ".read-more"
-      ).href = `eachHike.html?docID=${doc.id}`;
+      ).href = `eachHike.html?docID=${hikeDocID}`;
 
-      // Attach the new card to the container
+      // Bookmark icon
+      const icon = newcard.querySelector("i.material-icons");
+      icon.id = "save-" + hikeDocID;
+
+      const isBookmarked = bookmarks.includes(hikeDocID);
+      icon.innerText = isBookmarked ? "bookmark" : "bookmark_border";
+
+      icon.onclick = () => toggleBookmark(userId, hikeDocID);
+
       document.getElementById("hikes-go-here").appendChild(newcard);
     });
   } catch (error) {
@@ -138,11 +171,35 @@ async function displayCardsDynamically() {
   }
 }
 
-// Call the function to display cards when the page loads
-displayCardsDynamically();
+// -----------------------------
+// TOGGLE BOOKMARK
+// -----------------------------
+async function toggleBookmark(userId, hikeDocID) {
+  const userRef = doc(db, "users", userId);
+  const userSnap = await getDoc(userRef);
 
-// Call the seeding function when the main.html page loads.
+  const userData = userSnap.data() || {};
+  const bookmarks = userData.bookmarks || [];
+
+  const icon = document.getElementById("save-" + hikeDocID);
+  const isBookmarked = bookmarks.includes(hikeDocID);
+
+  try {
+    if (isBookmarked) {
+      await updateDoc(userRef, { bookmarks: arrayRemove(hikeDocID) });
+      icon.innerText = "bookmark_border";
+    } else {
+      await updateDoc(userRef, { bookmarks: arrayUnion(hikeDocID) });
+      icon.innerText = "bookmark";
+    }
+  } catch (err) {
+    console.error("Error toggling bookmark:", err);
+  }
+}
+
+// -----------------------------
+// EXECUTION
+// -----------------------------
 seedHikes();
-
 showDashboard();
 readQuote("tuesday");
